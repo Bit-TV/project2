@@ -28,8 +28,8 @@ public class PlayerAttack : MonoBehaviour
         if (rb != null && rb.linearVelocity.sqrMagnitude > 0.01f)
             lastDirection = rb.linearVelocity.normalized;
 
-        // Left click attacks
-        if (Input.GetMouseButtonDown(0) && cooldownTimer <= 0f)
+        // Left shift attacks
+       if (Input.GetKeyDown(KeyCode.LeftShift) && cooldownTimer <= 0f)
         {
             Attack();
             cooldownTimer = attackCooldown;
