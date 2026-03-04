@@ -1,61 +1,114 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Spawns enemies in waves and detects when a wave is cleared.
+// Spawns enemies in waves and starts the next wave after a short break.
+// Enemies are spawned gradually (pacing) instead of instantly.
 public class WaveManager : MonoBehaviour
 {
-    [Header("Wave Settings")]
-    public int currentWave = 1;
-    public int baseEnemies = 3;         // Enemies in wave 1
-    public int enemiesPerWave = 2;      // Extra enemies each wave
+    [Header("Wave")]
+    public int currentWave = 0;          // Starts at 0 so Wave 1 is the first wave that spawns
+    public int baseEnemies = 3;          // Enemies on Wave 1
+    public float enemiesPerWave = 1.2f;  // How fast enemy count grows each wave (gentler than +2 per wave)
+
+    [Header("Timing")]
+    public float timeBetweenWaves = 2f;  // Rest time after a wave ends
+    public float timeBetweenSpawns = 0.2f; // Delay between each enemy spawn within a wave
 
     [Header("Spawning")]
-    public GameObject enemyPrefab;      // Drag your EnemyBasic prefab here
-    public Transform[] spawnPoints;     // Drag your Spawn_Top/Bottom/Left/Right here
+    public GameObject enemyPrefab;       // Drag EnemyBasic prefab here
+    public Transform[] spawnPoints;      // Drag your 4 spawn point transforms here
 
-    // Track spawned enemies so we know when the wave is cleared
+    // Tracks enemies spawned this wave so we know when the wave is cleared
     private readonly List<GameObject> aliveEnemies = new List<GameObject>();
 
-    void Start()
+    private bool waveInProgress = false;
+    private Coroutine waveRoutine;
+
+    private void Start()
     {
-        StartWave();
+        // Start the first wave
+        waveRoutine = StartCoroutine(BeginNextWave());
     }
 
-    void Update()
+    private void Update()
     {
-        // Remove enemies that were destroyed
+        // Clean out destroyed enemies from the list
         aliveEnemies.RemoveAll(e => e == null);
 
-        // If none remain, wave is complete
-        if (aliveEnemies.Count == 0)
+        // If the wave is running and all enemies are gone, start the next wave
+        if (waveInProgress && aliveEnemies.Count == 0)
         {
-            // For now: automatically start next wave after a short delay
-            // Will replace this later with a Continue/Quit UI prompt.
-            Invoke(nameof(NextWave), 1f);
+            waveInProgress = false;
+
+            // Start next wave (only if we're not already starting one)
+            if (waveRoutine == null)
+                waveRoutine = StartCoroutine(BeginNextWave());
         }
     }
 
-    void StartWave()
+    private IEnumerator BeginNextWave()
     {
-        int enemyCount = baseEnemies + (currentWave - 1) * enemiesPerWave;
+        // Safety checks so we don't throw errors
+        if (enemyPrefab == null)
+        {
+            Debug.LogError("WaveManager: Enemy Prefab is not assigned.");
+            waveRoutine = null;
+            yield break;
+        }
 
+        if (spawnPoints == null || spawnPoints.Length == 0)
+        {
+            Debug.LogError("WaveManager: No spawn points assigned.");
+            waveRoutine = null;
+            yield break;
+        }
+
+        // Rest period between waves (pacing)
+        yield return new WaitForSeconds(timeBetweenWaves);
+
+        // Advance wave number
+        currentWave++;
+
+        // Calculate how many enemies to spawn this wave
+        int enemyCount = GetEnemyCountForWave(currentWave);
+
+        Debug.Log($"Wave {currentWave} starting with {enemyCount} enemies.");
+
+        waveInProgress = true;
+
+        // Spawn enemies gradually for better pacing
         for (int i = 0; i < enemyCount; i++)
         {
-            Transform spawn = spawnPoints[Random.Range(0, spawnPoints.Length)];
-
-            GameObject enemy = Instantiate(enemyPrefab, spawn.position, Quaternion.identity);
-            aliveEnemies.Add(enemy);
+            SpawnOneEnemy();
+            yield return new WaitForSeconds(timeBetweenSpawns);
         }
 
-        Debug.Log("Wave " + currentWave + " started with " + enemyCount + " enemies.");
+        // Done starting this wave
+        waveRoutine = null;
     }
 
-    void NextWave()
+    private void SpawnOneEnemy()
     {
-        // Prevent double-calling if Invoke stacks
-        if (aliveEnemies.Count > 0) return;
+        // Pick a random spawn point
+        Transform spawn = spawnPoints[Random.Range(0, spawnPoints.Length)];
+        if (spawn == null)
+        {
+            Debug.LogError("WaveManager: A spawn point entry is missing (None).");
+            return;
+        }
 
-        currentWave++;
-        StartWave();
+        // Spawn enemy and track it
+        GameObject enemy = Instantiate(enemyPrefab, spawn.position, Quaternion.identity);
+        aliveEnemies.Add(enemy);
+    }
+
+    private int GetEnemyCountForWave(int wave)
+    {
+        // Gentle scaling:
+        // Wave 1: baseEnemies + floor(1 * enemiesPerWave)
+        // Wave 10: baseEnemies + floor(10 * enemiesPerWave)
+        // Tune enemiesPerWave in Inspector to control pacing.
+        return baseEnemies + Mathf.FloorToInt(wave * enemiesPerWave);
     }
 }
