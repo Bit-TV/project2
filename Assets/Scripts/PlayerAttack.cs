@@ -3,14 +3,20 @@ using UnityEngine;
 // Simple melee attack that damages enemies in a small area in front of the player.
 public class PlayerAttack : MonoBehaviour
 {
+    [Header("Attack Settings")]
+    public KeyCode attackKey = KeyCode.LeftShift;
     public int damage = 1;
-    public float attackRange = 1.2f;      // How far in front the hit happens
-    public float hitRadius = 0.6f;        // Size of the hit circle
-    public float attackCooldown = 0.35f;  // Time between attacks
-    public LayerMask enemyLayer;          // Set to Enemy layer in Inspector
+    public float attackRange = 1.6f;     // Distance in front of the player
+    public float hitRadius = 1.0f;       // Size of hit circle
+    public float attackCooldown = 0.25f; // Time between attacks
+    public LayerMask enemyLayer;         // Set this to the Enemy layer in Inspector
+
+    [Header("Knockback")]
+    public bool useKnockback = true;
+    public float knockbackMultiplier = 1f; // Multiplies the enemy's knockbackForce
 
     private float cooldownTimer = 0f;
-    private Vector2 lastDirection = Vector2.right; // Direction we last moved (for aiming)
+    private Vector2 lastDirection = Vector2.right; // Direction player last moved
     private Rigidbody2D rb;
 
     private void Awake()
@@ -20,16 +26,16 @@ public class PlayerAttack : MonoBehaviour
 
     private void Update()
     {
-        // Cooldown countdown
+        // Cooldown timer
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
-        // Update lastDirection based on movement, so attack aims where you're moving
+        // Track direction based on movement so attacks aim correctly
         if (rb != null && rb.linearVelocity.sqrMagnitude > 0.01f)
             lastDirection = rb.linearVelocity.normalized;
 
-        // Left shift attacks
-       if (Input.GetKeyDown(KeyCode.LeftShift) && cooldownTimer <= 0f)
+        // Attack input (Left Shift)
+        if (Input.GetKeyDown(attackKey) && cooldownTimer <= 0f)
         {
             Attack();
             cooldownTimer = attackCooldown;
@@ -38,6 +44,7 @@ public class PlayerAttack : MonoBehaviour
 
     private void Attack()
     {
+        // Attack point is in front of the player
         Vector2 attackCenter = (Vector2)transform.position + lastDirection * attackRange;
 
         // Find all enemies in the attack area
@@ -45,9 +52,21 @@ public class PlayerAttack : MonoBehaviour
 
         foreach (Collider2D hit in hits)
         {
+            // Damage enemies that have Health
             Health h = hit.GetComponent<Health>();
             if (h != null)
                 h.TakeDamage(damage);
+
+            // Optional knockback for impact
+            if (useKnockback)
+            {
+                EnemyAI ai = hit.GetComponent<EnemyAI>();
+                if (ai != null)
+                {
+                    Vector2 knockDir = ((Vector2)hit.transform.position - (Vector2)transform.position).normalized;
+                    ai.ApplyKnockback(knockDir * knockbackMultiplier);
+                }
+            }
         }
     }
 

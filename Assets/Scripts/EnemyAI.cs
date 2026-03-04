@@ -1,26 +1,29 @@
 using UnityEngine;
 
-// Simple enemy that chases the player and deals damage on contact.
+// Enemy chases the player, deals damage on contact (with cooldown),
+// and can be knocked back when hit by the player.
 [RequireComponent(typeof(Rigidbody2D))]
 public class EnemyAI : MonoBehaviour
 {
     [Header("Movement")]
     public float moveSpeed = 3f;
 
-    [Header("Damage")]
-    public int damage = 1;              // Damage dealt per hit
-    public float damageInterval = 1f;   // Time between damage ticks (seconds)
+    [Header("Damage To Player")]
+    public int damage = 1;
+    public float damageInterval = 1f;
+
+    [Header("Knockback")]
+    public float knockbackForce = 4f;
 
     private Rigidbody2D rb;
     private Transform player;
-
-    private float damageTimer = 0f;     // Tracks time between damage ticks
+    private float damageTimer = 0f;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        rb.gravityScale = 0f;       // Top-down game, no gravity
-        rb.freezeRotation = true;   // Prevent spinning on collision
+        rb.gravityScale = 0f;      // Top-down game, no gravity
+        rb.freezeRotation = true;  // Prevent spinning
     }
 
     private void Start()
@@ -29,13 +32,9 @@ public class EnemyAI : MonoBehaviour
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
 
         if (playerObj != null)
-        {
             player = playerObj.transform;
-        }
         else
-        {
             Debug.LogError("No object tagged 'Player' found.");
-        }
     }
 
     private void FixedUpdate()
@@ -57,13 +56,10 @@ public class EnemyAI : MonoBehaviour
         if (damageTimer >= damageInterval)
         {
             Health playerHealth = collision.gameObject.GetComponent<Health>();
-
             if (playerHealth != null)
-            {
                 playerHealth.TakeDamage(damage);
-            }
 
-            damageTimer = 0f; // Reset cooldown timer
+            damageTimer = 0f;
         }
     }
 
@@ -71,8 +67,12 @@ public class EnemyAI : MonoBehaviour
     {
         // Reset timer when no longer touching player
         if (collision.gameObject.CompareTag("Player"))
-        {
             damageTimer = 0f;
-        }
+    }
+
+    // Called by PlayerAttack when the enemy is hit.
+    public void ApplyKnockback(Vector2 direction)
+    {
+        rb.AddForce(direction * knockbackForce, ForceMode2D.Impulse);
     }
 }
