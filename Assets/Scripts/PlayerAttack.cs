@@ -43,32 +43,29 @@ public class PlayerAttack : MonoBehaviour
     }
 
     private void Attack()
+{
+    // Hit area centered on the player (more forgiving)
+    Vector2 attackCenter = transform.position;
+
+    Collider2D[] hits = Physics2D.OverlapCircleAll(attackCenter, hitRadius, enemyLayer);
+
+    foreach (Collider2D hit in hits)
     {
-        // Attack point is in front of the player
-        Vector2 attackCenter = (Vector2)transform.position + lastDirection * attackRange;
+        Health h = hit.GetComponent<Health>();
+        if (h != null)
+            h.TakeDamage(damage);
 
-        // Find all enemies in the attack area
-        Collider2D[] hits = Physics2D.OverlapCircleAll(attackCenter, hitRadius, enemyLayer);
-
-        foreach (Collider2D hit in hits)
+        if (useKnockback)
         {
-            // Damage enemies that have Health
-            Health h = hit.GetComponent<Health>();
-            if (h != null)
-                h.TakeDamage(damage);
-
-            // Optional knockback for impact
-            if (useKnockback)
+            EnemyAI ai = hit.GetComponent<EnemyAI>();
+            if (ai != null)
             {
-                EnemyAI ai = hit.GetComponent<EnemyAI>();
-                if (ai != null)
-                {
-                    Vector2 knockDir = ((Vector2)hit.transform.position - (Vector2)transform.position).normalized;
-                    ai.ApplyKnockback(knockDir * knockbackMultiplier);
-                }
+                Vector2 knockDir = ((Vector2)hit.transform.position - (Vector2)transform.position).normalized;
+                ai.ApplyKnockback(knockDir * knockbackMultiplier);
             }
         }
     }
+}
 
     // Shows the attack circle in Scene view when player is selected
     private void OnDrawGizmosSelected()
