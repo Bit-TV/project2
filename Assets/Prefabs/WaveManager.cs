@@ -7,45 +7,43 @@ using UnityEngine;
 public class WaveManager : MonoBehaviour
 {
     [Header("Wave")]
-    public int currentWave = 0;          // Starts at 0 so Wave 1 is the first wave that spawns
-    public int baseEnemies = 3;          // Enemies on Wave 1
-    public float enemiesPerWave = 1.2f;  // How fast enemy count grows each wave (gentler than +2 per wave)
+    public int currentWave = 0;
+    public int baseEnemies = 3;
+    public float enemiesPerWave = 1.2f;
 
     [Header("Timing")]
-    public float timeBetweenWaves = 2f;     // Rest time after a wave ends
-    public float timeBetweenSpawns = 0.2f;  // Delay between each enemy spawn within a wave
+    public float timeBetweenWaves = 2f;
+    public float timeBetweenSpawns = 0.2f;
 
     [Header("Spawning")]
-    public GameObject enemyPrefab;       // Drag EnemyBasic prefab here
-    public Transform[] spawnPoints;      // Drag 4 spawn point transforms here
+    public GameObject enemyPrefab;
+    public Transform[] spawnPoints;
 
-    // Tracks enemies spawned this wave so we know when the wave is cleared
     private readonly List<GameObject> aliveEnemies = new List<GameObject>();
 
     private bool waveInProgress = false;
+    private bool spawningWave = false;      // ✅ NEW: prevents early wave-advance
     private Coroutine waveRoutine;
 
-    //UI-friendly read-only values
     public int CurrentWave => currentWave;
-    public int AliveEnemyCount => aliveEnemies.Count; // enemy count
 
     private void Start()
     {
-        // Start the first wave
         waveRoutine = StartCoroutine(BeginNextWave());
     }
 
     private void Update()
     {
-        // Clean out destroyed enemies from the list
         aliveEnemies.RemoveAll(e => e == null);
 
-        // If the wave is running and all enemies are gone, start the next wave
-        if (waveInProgress && aliveEnemies.Count == 0)
+        //  Only advance when:
+        // - wave is in progress
+        // - we are NOT still spawning
+        // - and all tracked enemies are gone
+        if (waveInProgress && !spawningWave && aliveEnemies.Count == 0)
         {
             waveInProgress = false;
 
-            // Start next wave (only if we're not already starting one)
             if (waveRoutine == null)
                 waveRoutine = StartCoroutine(BeginNextWave());
         }
@@ -53,7 +51,6 @@ public class WaveManager : MonoBehaviour
 
     private IEnumerator BeginNextWave()
     {
-        // Safety checks so we don't throw errors
         if (enemyPrefab == null)
         {
             Debug.LogError("WaveManager: Enemy Prefab is not assigned.");
@@ -68,33 +65,28 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
-        // Rest period between waves (pacing)
         yield return new WaitForSeconds(timeBetweenWaves);
 
-        // Advance wave number
         currentWave++;
-
-        // Calculate how many enemies to spawn this wave
         int enemyCount = GetEnemyCountForWave(currentWave);
 
         Debug.Log($"Wave {currentWave} starting with {enemyCount} enemies.");
 
         waveInProgress = true;
+        spawningWave = true;
 
-        // Spawn enemies gradually for better pacing
         for (int i = 0; i < enemyCount; i++)
         {
             SpawnOneEnemy();
             yield return new WaitForSeconds(timeBetweenSpawns);
         }
 
-        // Done starting this wave
+        spawningWave = false;
         waveRoutine = null;
     }
 
     private void SpawnOneEnemy()
     {
-        // Pick a random spawn point
         Transform spawn = spawnPoints[Random.Range(0, spawnPoints.Length)];
         if (spawn == null)
         {
@@ -102,17 +94,12 @@ public class WaveManager : MonoBehaviour
             return;
         }
 
-        // Spawn enemy and track it
         GameObject enemy = Instantiate(enemyPrefab, spawn.position, Quaternion.identity);
         aliveEnemies.Add(enemy);
     }
 
     private int GetEnemyCountForWave(int wave)
     {
-        // Gentle scaling:
-        // Wave 1: baseEnemies + floor(1 * enemiesPerWave)
-        // Wave 10: baseEnemies + floor(10 * enemiesPerWave)
-        // Tune enemiesPerWave in Inspector to control pacing.
         return baseEnemies + Mathf.FloorToInt(wave * enemiesPerWave);
     }
 }
