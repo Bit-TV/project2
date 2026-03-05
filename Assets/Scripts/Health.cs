@@ -1,27 +1,25 @@
 using System.Collections;
 using UnityEngine;
 
-// Simple health component for anything that can take damage and die.
 public class Health : MonoBehaviour
 {
     public int maxHealth = 5;
-
     private int currentHealth;
 
-    // Used for the damage flash effect
     private SpriteRenderer sr;
     private Coroutine flashRoutine;
+    private Color baseColor;
 
     public int CurrentHealth => currentHealth;
 
     private void Awake()
     {
-        // Try to find a SpriteRenderer on this object
-        sr = GetComponent<SpriteRenderer>();
-    }
+        // Works if the SpriteRenderer is on a child too
+        sr = GetComponentInChildren<SpriteRenderer>();
 
-    private void Start()
-    {
+        if (sr != null)
+            baseColor = sr.color;
+
         currentHealth = maxHealth;
     }
 
@@ -29,7 +27,6 @@ public class Health : MonoBehaviour
     {
         currentHealth -= amount;
 
-        // Visual feedback: flash the sprite if it exists
         if (sr != null)
         {
             if (flashRoutine != null) StopCoroutine(flashRoutine);
@@ -37,25 +34,17 @@ public class Health : MonoBehaviour
         }
 
         if (currentHealth <= 0)
-        {
             Die();
-        }
     }
 
     private IEnumerator DamageFlash()
     {
-        // Save the original color
-        Color original = sr.color;
-
-        // Flash to white (or red if you prefer)
         sr.color = Color.white;
 
-        // Wait a short time
-        yield return new WaitForSeconds(0.08f);
+        // Realtime so it still finishes even if you pause mid-flash
+        yield return new WaitForSecondsRealtime(0.08f);
 
-        // Restore color
-        sr.color = original;
-
+        sr.color = baseColor;
         flashRoutine = null;
     }
 
