@@ -49,7 +49,19 @@ public class Health : MonoBehaviour
     }
 
     private void Die()
+{
+    //Enemy dies → destroyed normally
+   //Player dies → Game Over screen
+    GameOverManager gom = FindObjectOfType<GameOverManager>();
+
+    if (CompareTag("Player") && gom != null)
+    {
+        gom.TriggerGameOver();
+        gameObject.SetActive(false);
+    }
+    else
     {
         Destroy(gameObject);
     }
+}
 }
