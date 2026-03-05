@@ -17,7 +17,9 @@ public class EnemyAI : MonoBehaviour
 
     private Rigidbody2D rb;
     private Transform player;
+
     private float damageTimer = 0f;
+    private bool touchingPlayer = false;
 
     private void Awake()
     {
@@ -28,7 +30,6 @@ public class EnemyAI : MonoBehaviour
 
     private void Start()
     {
-        // Find the player by tag
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
 
         if (playerObj != null)
@@ -44,30 +45,42 @@ public class EnemyAI : MonoBehaviour
         // Move toward the player
         Vector2 direction = ((Vector2)player.position - rb.position).normalized;
         rb.linearVelocity = direction * moveSpeed;
+
+        // Handle damage over time while touching
+        if (touchingPlayer)
+        {
+            damageTimer += Time.fixedDeltaTime;
+
+            if (damageTimer >= damageInterval)
+            {
+                Health playerHealth = player.GetComponent<Health>();
+                if (playerHealth != null)
+                    playerHealth.TakeDamage(damage);
+
+                damageTimer = 0f;
+            }
+        }
     }
 
-    private void OnCollisionStay2D(Collision2D collision)
+    private void OnCollisionEnter2D(Collision2D collision)
     {
-        // Only damage the player
         if (!collision.gameObject.CompareTag("Player")) return;
 
-        damageTimer += Time.deltaTime;
+        touchingPlayer = true;
+        damageTimer = 0f;
 
-        if (damageTimer >= damageInterval)
-        {
-            Health playerHealth = collision.gameObject.GetComponent<Health>();
-            if (playerHealth != null)
-                playerHealth.TakeDamage(damage);
-
-            damageTimer = 0f;
-        }
+        // Instant first hit
+        Health playerHealth = collision.gameObject.GetComponent<Health>();
+        if (playerHealth != null)
+            playerHealth.TakeDamage(damage);
     }
 
     private void OnCollisionExit2D(Collision2D collision)
     {
-        // Reset timer when no longer touching player
-        if (collision.gameObject.CompareTag("Player"))
-            damageTimer = 0f;
+        if (!collision.gameObject.CompareTag("Player")) return;
+
+        touchingPlayer = false;
+        damageTimer = 0f;
     }
 
     // Called by PlayerAttack when the enemy is hit.
