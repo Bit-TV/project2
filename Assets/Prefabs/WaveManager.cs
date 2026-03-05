@@ -12,18 +12,22 @@ public class WaveManager : MonoBehaviour
     public float enemiesPerWave = 1.2f;  // How fast enemy count grows each wave (gentler than +2 per wave)
 
     [Header("Timing")]
-    public float timeBetweenWaves = 2f;  // Rest time after a wave ends
-    public float timeBetweenSpawns = 0.2f; // Delay between each enemy spawn within a wave
+    public float timeBetweenWaves = 2f;     // Rest time after a wave ends
+    public float timeBetweenSpawns = 0.2f;  // Delay between each enemy spawn within a wave
 
     [Header("Spawning")]
     public GameObject enemyPrefab;       // Drag EnemyBasic prefab here
-    public Transform[] spawnPoints;      // Drag your 4 spawn point transforms here
+    public Transform[] spawnPoints;      // Drag 4 spawn point transforms here
 
     // Tracks enemies spawned this wave so we know when the wave is cleared
     private readonly List<GameObject> aliveEnemies = new List<GameObject>();
 
     private bool waveInProgress = false;
     private Coroutine waveRoutine;
+
+    //UI-friendly read-only values
+    public int CurrentWave => currentWave;
+    public int AliveEnemyCount => aliveEnemies.Count; // enemy count
 
     private void Start()
     {
